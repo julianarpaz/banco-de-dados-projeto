@@ -1,13 +1,14 @@
 import pandas as pd
 import os
+import csv
 import mysql.connector
 
 # Configurações do banco de dados
 db_config = {
     'host': 'localhost',
-    'user': 'seu_usuario',
-    'password': 'sua_senha',
-    'database': 'seu_banco_de_dados'
+    'user': 'user',
+    'password': 'password',
+    'database': 'database'
 }
 
 # Nome da pasta com arquivos csv
@@ -27,8 +28,8 @@ def criar_tabelas_csv(pasta, db_config, arquivo_log):
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor()
 
-    # Cria o arquivo de log (caso não exista)
-    with open(arquivo_log, 'w') as log_file:
+    # Cria o arquivo de log
+    with open(arquivo_log_caminho, 'w') as log_file:
         log_file.write("Arquivos CSV com erro na inserção de dados:\n")
 
     # Percorre todos os arquivos da pasta
@@ -42,35 +43,26 @@ def criar_tabelas_csv(pasta, db_config, arquivo_log):
                 # Caminho completo para o arquivo CSV
                 caminho_arquivo = os.path.join(pasta, arquivo)
 
-                # Lê o arquivo CSV usando o pandas
-                df = pd.read_csv(caminho_arquivo)
-
                 # Nome da tabela a ser criada (usando o nome do arquivo sem a extensão)
                 nome_tabela = os.path.splitext(arquivo)[0]
 
-                # Cria a tabela no banco de dados (caso não exista)
-                create_table_query = f"CREATE TABLE IF NOT EXISTS {nome_tabela} ("
+                # Lê o arquivo CSV
+                with open(caminho_arquivo, 'r') as csv_file:
+                    csv_reader = csv.reader(csv_file)
+                    header = next(csv_reader)  # Ler a primeira linha como cabeçalho
 
-                # Obtém os nomes das colunas do arquivo CSV
-                colunas = df.columns.tolist()
+                    # Criar a tabela com base nas colunas do CSV
+                    colunas = [f"{coluna} VARCHAR(255)" for coluna in header]
+                    create_table_query = f"CREATE TABLE IF NOT EXISTS {nome_tabela} ({', '.join(colunas)})"
+                    cursor.execute(create_table_query)
 
-                # Adiciona as colunas à consulta SQL de criação da tabela
-                for coluna in colunas:
-                    create_table_query += f"{coluna} VARCHAR(255), "
+                    # Inserir os dados do CSV na tabela
+                    for row in csv_reader:
+                        insert_query = f"INSERT INTO {nome_tabela} VALUES {tuple(row)}"
+                        cursor.execute(insert_query)
 
-                # Remove a última vírgula e fecha a consulta SQL
-                create_table_query = create_table_query[:-2] + ")"
-
-                # Executa a consulta SQL para criar a tabela
-                cursor.execute(create_table_query)
-
-                # Insere os dados do arquivo CSV na tabela
-                for linha in df.itertuples(index=False):
-                    insert_query = f"INSERT INTO {nome_tabela} ({', '.join(colunas)}) VALUES {linha}"
-                    cursor.execute(insert_query)
-                
-                # Confirma as alterações no banco de dados para cada tabela criada
-                conn.commit()
+                    # Confirmar as alterações no banco de dados
+                    conn.commit()
                 
         except Exception as e:
 
@@ -85,4 +77,4 @@ def criar_tabelas_csv(pasta, db_config, arquivo_log):
 
     print("Leitura de arquivos concluída!")
 
-# criar_tabelas_csv(pasta_csv_caminho, db_config, arquivo_log_caminho)
+criar_tabelas_csv(pasta_csv_caminho, db_config, arquivo_log_caminho)	
