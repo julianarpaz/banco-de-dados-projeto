@@ -1,0 +1,10 @@
+ID_Funcionário,Sobrenome,Nome,Cargo,Título,Endereço,Cidade,País,Telefone,Supervisor
+1,Davolio,Nancy,Representante de Vendas,Srta.,507 - 20th Ave. E. Apt. 2A,Seattle,USA,(206) 555-9857,2
+2,Fuller,Andrew,Vice Presidente,Dr.,908 W. Capital Way,Tacoma,USA,(206) 555-9482,NULL
+3,Leverling,Janet,Representante de Vendas,Srta.,722 Moss Bay Blvd.,Kirkland,USA,(206) 555-3412,2
+4,Peacock,Margaret,Representante de Vendas,Sra.,4110 Old Redmond Rd.,Redmond,USA,(206) 555-8122,2
+5,Buchanan,Steven,Gerente de Vendas,Sr.,14 Garrett Hill,London,UK,(71) 555-4848,2
+6,Suyama,Michael,Representante de Vendas,Sr.,Coventry House Miner Rd.,London,UK,(71) 555-7773,5
+7,King,Robert,Representante de Vendas,Sr.,Edgeham Hollow Winchester Way,London,UK,(71) 555-5598,5
+8,Callahan,Laura,Coordenador de Vendas,Srta.,4726 - 11th Ave. N.E.,Seattle,USA,(206) 555-1189,2
+9,Dodsworth,Anne,Representante de Vendas,Srta.,7 Houndstooth Rd.,London,UK,(71) 555-4444,5
