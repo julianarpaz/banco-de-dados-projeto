@@ -1,4 +1,4 @@
-ID_Funcionário,Sobrenome,Nome,Cargo,Título,Endereço,Cidade,País,Telefone,Supervisor
+ID_Funcionario,Sobrenome,Nome,Cargo,Titulo,Endereço,Cidade,Pais,Telefone,Supervisor
 1,Davolio,Nancy,Representante de Vendas,Srta.,507 - 20th Ave. E. Apt. 2A,Seattle,USA,(206) 555-9857,2
 2,Fuller,Andrew,Vice Presidente,Dr.,908 W. Capital Way,Tacoma,USA,(206) 555-9482,NULL
 3,Leverling,Janet,Representante de Vendas,Srta.,722 Moss Bay Blvd.,Kirkland,USA,(206) 555-3412,2
