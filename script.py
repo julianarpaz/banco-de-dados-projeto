@@ -48,9 +48,7 @@ CREATE TABLE funcionarios (
     Endereco varchar(60),
     Cidade varchar(15),
     Pais varchar(15),
-    Telefone varchar(24),
-    Supervisor int,
-    FOREIGN KEY (Supervisor) REFERENCES funcionarios(ID_Funcionario)
+    Telefone varchar(24)
 );
 '''
 tabela_categorias = '''
@@ -182,8 +180,6 @@ def preencher_tabela(nome_arquivo, db_config, arquivo_log):
     # Fecha a conexão com o banco de dados
     cursor.close()
     conn.close()
-
-    print("Leitura de arquivos concluída!")
 
 tabelas = [tabela_funcionarios, tabela_categorias, tabela_clientes, tabela_compras, tabela_produtos, tabela_detalhamento_compra]
 
