@@ -150,24 +150,24 @@ def preencher_tabela(nome_arquivo, db_config, arquivo_log):
                 next(csv_reader)
 
                 # Insere os dados do CSV na tabela
-                for row in csv_reader:
+                for linha in csv_reader:
                     # Verifica e converte os campos numéricos para números
-                    converted_row = []
-                    for value in row:
+                    linha_formatada = []
+                    for value in linha:
                         try:
-                            converted_value = int(value)
+                            valor_formatado = int(value)
                         except ValueError:
                             try:
-                                converted_value = float(value)
+                                valor_formatado = float(value)
                             except ValueError:
-                                converted_value = value
+                                valor_formatado = value
 
-                        converted_row.append(converted_value)
+                        linha_formatada.append(valor_formatado)
 
                     # Monta a consulta SQL para inserir os valores na tabela
-                    placeholders = ', '.join(['%s'] * len(converted_row))
+                    placeholders = ', '.join(['%s'] * len(linha_formatada))
                     insert_query = f"INSERT INTO {nome_tabela} VALUES ({placeholders})"
-                    cursor.execute(insert_query, converted_row)
+                    cursor.execute(insert_query, linha_formatada)
 
             print(f"Os dados do arquivo '{nome_arquivo}' foram importados com sucesso para a tabela '{nome_tabela}'.")
             conn.commit()
