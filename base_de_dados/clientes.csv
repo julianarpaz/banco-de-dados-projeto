@@ -1,4 +1,4 @@
-ID_Cliente,Nome_Empresa,Representante_Empresa,Cargo_Representante,Endereço,Cidade,País,Telefone
+ID_Cliente,Nome_Empresa,Representante_Empresa,Cargo_Representante,Endereco,Cidade,Pais,Telefone
 ALFKI,Alfreds Futterkiste,Maria Anders,Representante de vendas,Obere Str. 57,Berlin,Germany,030-0074321
 ANATR,Ana Trujillo Emparedados y helados,Ana Trujillo,Proprietario,Avda. de la Constitución 2222,México D.F.,Mexico,(5) 555-4729
 ANTON,Antonio Moreno Taquería,Antonio Moreno,Proprietario,Mataderos  2312,México D.F.,Mexico,(5) 555-3932

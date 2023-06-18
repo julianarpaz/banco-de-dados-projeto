@@ -1,4 +1,4 @@
-ID_Produto,Nome_Produto,ID_Categoria,Preço_Unitario,Unidades_em_Estoque,Descontinuados
+ID_Produto,Nome_Produto,ID_Categoria,Preco_Unitario,Unidades_em_Estoque,Descontinuados
 1,Chai,1,18,39,0
 2,Chang,1,19,17,0
 3,Aniseed Syrup,2,10,13,0
