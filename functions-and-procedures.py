@@ -87,4 +87,6 @@ for query in backfill:
 
 executar_comando(function_preco_total_por_cliente, db_config)
 
-executar_comando(preco_total_por_cliente(""), db_config)
+nome_cliente = "ALFKI"
+
+executar_comando(preco_total_por_cliente(nome_cliente), db_config)
