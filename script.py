@@ -114,6 +114,116 @@ CREATE TABLE detalhamento_compra (
 );
 '''
 
+procedure_backfill = '''
+DELIMITER //
+
+CREATE PROCEDURE backfill_calcular_preco_total()
+BEGIN
+    UPDATE compras c
+    JOIN (
+        SELECT ID_Compra, SUM(Preco_Unitario * Quantidade *(1 - Desconto)) AS total
+        FROM detalhamento_compra
+        GROUP BY ID_Compra
+    ) dc ON dc.ID_Compra = c.ID_Compra
+    SET c.Preco_Total = IFNULL(dc.total, 0);
+END //
+
+DELIMITER ;
+'''
+
+function_preco_total_por_cliente = '''
+DELIMITER //
+CREATE FUNCTION calcular_preco_total_cliente(ID_Cliente_param CHAR(10))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    DECLARE preco_total DECIMAL(10,2);
+    
+    SELECT SUM(dc.Preco_Unitario * dc.Quantidade * (1 - Desconto))
+    INTO preco_total
+    FROM compras c
+    JOIN detalhamento_compra dc ON dc.ID_Compra = c.ID_Compra
+    WHERE c.ID_Cliente = ID_Cliente_param;
+    
+    IF preco_total IS NULL THEN
+        SET preco_total = 0;
+    END IF;
+    
+    RETURN preco_total;
+END;
+
+DELIMITER ;
+'''
+
+realiza_backfill = '''CALL backfill_calcular_preco_total();''' 
+
+view_top_10_produtos = '''
+CREATE or REPLACE VIEW vw_produto_mais_vendido AS
+	SELECT p.Nome_Produto,
+		SUM(dc.Quantidade) AS Total_Vendas
+	FROM produtos as p
+	JOIN detalhamento_compra as dc ON (p.ID_Produto = dc.ID_Produto)
+	GROUP BY p.Nome_Produto
+	ORDER BY Total_Vendas DESC
+	LIMIT 10;
+'''
+
+view_top_5_categorias = '''
+CREATE or REPLACE VIEW vw_categorias_mais_vendidas AS
+	SELECT cat.Nome_Categoria,
+		SUM(dc.Quantidade) AS Total_Vendas
+	FROM categorias as cat
+	JOIN produtos as p ON cat.ID_Categoria = p.ID_Categoria
+	JOIN detalhamento_compra as dc ON (p.ID_Produto = dc.ID_Produto)
+	GROUP BY cat.ID_Categoria, cat.Nome_Categoria
+	ORDER BY Total_Vendas DESC
+	LIMIT 5;
+'''
+
+view_melhor_vendedor_por_pais = '''
+CREATE VIEW vw_top1_vendedor_por_pais AS
+SELECT Pais, Nome_Vendedor, Total_Vendas
+FROM (
+    SELECT f.Pais, f.Nome AS Nome_Vendedor, COUNT(*) AS Total_Vendas,
+           ROW_NUMBER() OVER (PARTITION BY f.Pais ORDER BY COUNT(*) DESC) AS Rank
+    FROM funcionarios f
+    JOIN compras c ON f.ID_Funcionario = c.ID_Vendedor
+    GROUP BY f.Pais, f.Nome
+) AS T
+WHERE Rank = 1
+ORDER BY Pais;
+'''
+
+view_compra_detalhamento_com_cliente = '''
+CREATE VIEW vw_pedidos AS
+SELECT c.ID_Compra, c.Data_Venda, cli.Representante_Empresa, p.Nome_Produto
+FROM compras c
+INNER JOIN clientes cli ON cli.ID_Cliente = c.ID_Cliente
+INNER JOIN detalhamento_compra dc ON dc.ID_Compra = c.ID_Compra
+INNER JOIN produtos p ON dc.ID_Produto = p.ID_Produto;
+'''
+
+trigger_atualiza_estoque ='''
+CREATE TRIGGER atualizar_estoque
+AFTER INSERT ON compras
+FOR EACH ROW
+BEGIN
+    UPDATE produtos
+    SET Unidades_em_Estoque = Unidades_em_Estoque - NEW.Quantidade
+    WHERE ID_Produto = NEW.ID_Produto;
+END;'''
+
+trigger_calcular_total_compra = '''
+CREATE TRIGGER calcular_total_compra
+AFTER INSERT ON detalhamento_compra
+FOR EACH ROW
+BEGIN
+    UPDATE compras
+    SET Total = (SELECT SUM((Preco_Unitario * Quantidade) - Desconto) FROM detalhamento_compra WHERE ID_Compra = NEW.ID_Compra)
+    WHERE ID_Compra = NEW.ID_Compra;
+END;'''
+
+
 # Cria o arquivo de log
 with open(arquivo_log, 'w') as log_arquivo:
     log_arquivo.write("Arquivos CSV com erro na insercao de dados:\n")
@@ -181,12 +291,60 @@ def preencher_tabela(nome_arquivo, db_config, arquivo_log):
     cursor.close()
     conn.close()
 
+def executar_comando(query_sql, db_config):
+
+    connection = mysql.connector.connect(**db_config)
+    cursor = connection.cursor()
+
+    try: 
+
+        # Executar a consulta SQL 
+        cursor.execute(query_sql)
+        connection.commit()
+        print("Comando executado com sucesso!")
+
+    except Exception as e:
+        # Registra a query com o seu respectivo erro no arquivo de log
+        with open(arquivo_log, 'a') as log_arquivo:
+            log_arquivo.write(f"Comando falho:{query_sql}: {str(e)}\n")
+
+    cursor.close()
+    connection.close()
+
+def preco_total_por_cliente(cliente):
+    consulta_sql = "SELECT calcular_preco_total_cliente('" + cliente + "')"
+    return consulta_sql
+
+def executar_view (view):
+    consulta = "SELECT * FROM" + view + ";"
+    return consulta
+
+#criando a função
+executar_comando(function_preco_total_por_cliente, db_config)
+
+views = [view_top_10_produtos, view_compra_detalhamento_com_cliente, view_melhor_vendedor_por_pais, view_top_5_categorias]
+
+triggers = [trigger_atualiza_estoque, trigger_calcular_total_compra]
+
 tabelas = [tabela_funcionarios, tabela_categorias, tabela_clientes, tabela_compras, tabela_produtos, tabela_detalhamento_compra]
 
 arquivos_csv = ['funcionarios.csv', 'categorias.csv', 'clientes.csv', 'compras.csv',  'produtos.csv', 'detalhamento_compra.csv']
+
+backfill = [procedure_backfill, realiza_backfill]
+
+clientes = ["ALFKI" "HANAR" "BLONP"]
 
 for tabela in tabelas:
     criar_tabela(tabela, db_config)
 
 for nome_arquivo in arquivos_csv:
     preencher_tabela(nome_arquivo, db_config, arquivo_log_caminho)
+
+for query in backfill:
+    executar_comando(query, db_config)
+
+for cliente in clientes:
+    executar_comando(preco_total_por_cliente(cliente), db_config)
+
+for view in views:
+    executar_comando(executar_view(view), db_config)

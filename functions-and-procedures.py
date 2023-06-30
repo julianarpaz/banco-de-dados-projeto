@@ -75,7 +75,7 @@ def executar_comando(query_sql, db_config):
     except Exception as e:
         # Registra a query com o seu respectivo erro no arquivo de log
         with open(arquivo_log, 'a') as log_arquivo:
-            log_arquivo.write(f"{query_sql}: {str(e)}\n")
+            log_arquivo.write(f"Comando falho:{query_sql}: {str(e)}\n")
 
     cursor.close()
     connection.close()

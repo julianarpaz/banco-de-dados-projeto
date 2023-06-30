@@ -21,13 +21,18 @@ Os modelos conceitual e relacional serão apresentados a seguir. A base de dados
 ```mermaid 
 
 erDiagram
-    CLIENTE ||--o{ COMPRA : places
+    CLIENTE ||--|{ COMPRA : realiza
+    DETALHAMENTO_COMPRA ||--|{ COMPRA : tem
+    COMPRA  }|--|{ PRODUTO : contem
+    PRODUTO ||--|{ CATEGORIA : pertence
+    DETALHAMENTO_COMPRA ||--|{ PRODUTO : inclui
+    FUNCIONARIOS ||--|{ COMPRA : vendem
+
     CLIENTE {
         string nome
         string custNumber
         string sector
     }
-    COMPRA ||--|{ PRODUTO : contem
     COMPRA {
         int ID_Compra
         string deliveryAddress
@@ -37,5 +42,13 @@ erDiagram
         int quantidade
         decimal Preco_Unitario
     }
+    CATEGORIA {
+        int ID_Categoria
+        string Descricao
+    }
+    DETALHAMENTO_COMPRA {
+
+    }
+    
 
 ``` 
