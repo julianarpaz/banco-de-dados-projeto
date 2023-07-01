@@ -4,10 +4,10 @@ import mysql.connector
 
 # Configurações do banco de dados
 db_config = {
-    'host': '127.0.0.1',
-    'user': 'root',
-    'password': 'root',
-    'database': 'db_projeto_bd2'
+    'host': 'localhost',
+    'user': 'user',
+    'password': 'password',
+    'database': 'database'
 }
 
 # Nome da pasta com arquivos csv
