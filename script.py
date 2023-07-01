@@ -4,10 +4,10 @@ import mysql.connector
 
 # Configurações do banco de dados
 db_config = {
-    'host': 'localhost',
-    'user': 'user',
-    'password': 'password',
-    'database': 'database'
+    'host': '127.0.0.1',
+    'user': 'root',
+    'password': 'root',
+    'database': 'db_projeto_bd2'
 }
 
 # Nome da pasta com arquivos csv
@@ -31,7 +31,7 @@ def criar_tabela(tabela_sql, db_config):
     # Executar a consulta SQL para criar a tabela
     cursor.execute(tabela_sql)
     connection.commit()
-    print(f"Tabela{tabela_sql} criada com sucesso!")
+    # print(f"Tabela{tabela_sql} criada com sucesso!")
 
     # Fechar a conexão com o banco de dados
     cursor.close()
@@ -115,8 +115,6 @@ CREATE TABLE detalhamento_compra (
 '''
 
 procedure_backfill = '''
-DELIMITER //
-
 CREATE PROCEDURE backfill_calcular_preco_total()
 BEGIN
     UPDATE compras c
@@ -126,13 +124,10 @@ BEGIN
         GROUP BY ID_Compra
     ) dc ON dc.ID_Compra = c.ID_Compra
     SET c.Preco_Total = IFNULL(dc.total, 0);
-END //
-
-DELIMITER ;
+END
 '''
 
 function_preco_total_por_cliente = '''
-DELIMITER //
 CREATE FUNCTION calcular_preco_total_cliente(ID_Cliente_param CHAR(10))
 RETURNS DECIMAL(10,2)
 DETERMINISTIC
@@ -151,13 +146,11 @@ BEGIN
     
     RETURN preco_total;
 END;
-
-DELIMITER ;
 '''
 
 realiza_backfill = '''CALL backfill_calcular_preco_total();''' 
 
-view_top_10_produtos = '''
+vw_produto_mais_vendido = '''
 CREATE or REPLACE VIEW vw_produto_mais_vendido AS
 	SELECT p.Nome_Produto,
 		SUM(dc.Quantidade) AS Total_Vendas
@@ -168,7 +161,7 @@ CREATE or REPLACE VIEW vw_produto_mais_vendido AS
 	LIMIT 10;
 '''
 
-view_top_5_categorias = '''
+vw_categorias_mais_vendidas = '''
 CREATE or REPLACE VIEW vw_categorias_mais_vendidas AS
 	SELECT cat.Nome_Categoria,
 		SUM(dc.Quantidade) AS Total_Vendas
@@ -180,21 +173,29 @@ CREATE or REPLACE VIEW vw_categorias_mais_vendidas AS
 	LIMIT 5;
 '''
 
-view_melhor_vendedor_por_pais = '''
-CREATE VIEW vw_top1_vendedor_por_pais AS
-SELECT Pais, Nome_Vendedor, Total_Vendas
+vw_top1_vendedor_por_pais = '''
+CREATE or REPLACE VIEW vw_top1_vendedor_por_pais AS
+SELECT T.Pais, T.Nome_Vendedor, T.Total_Vendas
 FROM (
-    SELECT f.Pais, f.Nome AS Nome_Vendedor, COUNT(*) AS Total_Vendas,
-           ROW_NUMBER() OVER (PARTITION BY f.Pais ORDER BY COUNT(*) DESC) AS Rank
+    SELECT f.Pais, f.Nome AS Nome_Vendedor, COUNT(*) AS Total_Vendas
     FROM funcionarios f
-    JOIN compras c ON f.ID_Funcionario = c.ID_Vendedor
+    JOIN compras c ON f.ID_Funcionario = c.ID_Funcionario
     GROUP BY f.Pais, f.Nome
 ) AS T
-WHERE Rank = 1
-ORDER BY Pais;
+JOIN (
+    SELECT Pais, MAX(Total_Vendas) AS Max_Vendas
+    FROM (
+        SELECT f.Pais, f.Nome AS Nome_Vendedor, COUNT(*) AS Total_Vendas
+        FROM funcionarios f
+        JOIN compras c ON f.ID_Funcionario = c.ID_Funcionario
+        GROUP BY f.Pais, f.Nome
+    ) AS V
+    GROUP BY Pais
+) AS M ON T.Pais = M.Pais AND T.Total_Vendas = M.Max_Vendas
+ORDER BY T.Pais;
 '''
 
-view_compra_detalhamento_com_cliente = '''
+vw_pedidos = '''
 CREATE VIEW vw_pedidos AS
 SELECT c.ID_Compra, c.Data_Venda, cli.Representante_Empresa, p.Nome_Produto
 FROM compras c
@@ -205,13 +206,14 @@ INNER JOIN produtos p ON dc.ID_Produto = p.ID_Produto;
 
 trigger_atualiza_estoque ='''
 CREATE TRIGGER atualizar_estoque
-AFTER INSERT ON compras
+AFTER INSERT ON detalhamento_compra
 FOR EACH ROW
 BEGIN
     UPDATE produtos
     SET Unidades_em_Estoque = Unidades_em_Estoque - NEW.Quantidade
     WHERE ID_Produto = NEW.ID_Produto;
-END;'''
+END;
+'''
 
 trigger_calcular_total_compra = '''
 CREATE TRIGGER calcular_total_compra
@@ -287,11 +289,11 @@ def preencher_tabela(nome_arquivo, db_config, arquivo_log):
         with open(arquivo_log, 'a') as log_arquivo:
             log_arquivo.write(f"{nome_arquivo}: {str(e)}\n")
 
-    # Fecha a conexão com o banco de dados
+    # Lê os resultados e fecha conexão com o banco de dados
     cursor.close()
     conn.close()
 
-def executar_comando(query_sql, db_config):
+def executar_comando(query_sql, db_config, arquivo_log):
 
     connection = mysql.connector.connect(**db_config)
     cursor = connection.cursor()
@@ -301,12 +303,15 @@ def executar_comando(query_sql, db_config):
         # Executar a consulta SQL 
         cursor.execute(query_sql)
         connection.commit()
-        print("Comando executado com sucesso!")
 
     except Exception as e:
         # Registra a query com o seu respectivo erro no arquivo de log
         with open(arquivo_log, 'a') as log_arquivo:
             log_arquivo.write(f"Comando falho:{query_sql}: {str(e)}\n")
+
+    for row in cursor.fetchall():
+        print(row)
+        cursor.close()
 
     cursor.close()
     connection.close()
@@ -316,13 +321,12 @@ def preco_total_por_cliente(cliente):
     return consulta_sql
 
 def executar_view (view):
-    consulta = "SELECT * FROM" + view + ";"
+    consulta = "SELECT * FROM " + view + ";"
     return consulta
 
-#criando a função
-executar_comando(function_preco_total_por_cliente, db_config)
+views_criacao = [vw_produto_mais_vendido, vw_categorias_mais_vendidas, vw_top1_vendedor_por_pais]
 
-views = [view_top_10_produtos, view_compra_detalhamento_com_cliente, view_melhor_vendedor_por_pais, view_top_5_categorias]
+views = ["vw_produto_mais_vendido", "vw_categorias_mais_vendidas", "vw_top1_vendedor_por_pais"]
 
 triggers = [trigger_atualiza_estoque, trigger_calcular_total_compra]
 
@@ -332,7 +336,12 @@ arquivos_csv = ['funcionarios.csv', 'categorias.csv', 'clientes.csv', 'compras.c
 
 backfill = [procedure_backfill, realiza_backfill]
 
-clientes = ["ALFKI" "HANAR" "BLONP"]
+clientes = ["ALFKI", "HANAR", "BLONP"]
+
+preco_total_coluna = '''
+ALTER TABLE db_projeto_bd2.compras
+ADD COLUMN Preco_Total DECIMAL(10,2) DEFAULT 0;
+'''
 
 for tabela in tabelas:
     criar_tabela(tabela, db_config)
@@ -340,11 +349,25 @@ for tabela in tabelas:
 for nome_arquivo in arquivos_csv:
     preencher_tabela(nome_arquivo, db_config, arquivo_log_caminho)
 
+#criacao de nova coluna preco_total
+executar_comando(preco_total_coluna, db_config, arquivo_log_caminho)
+
+#criando a função de gastos totais do cliente
+executar_comando(function_preco_total_por_cliente, db_config, arquivo_log_caminho)
+
 for query in backfill:
-    executar_comando(query, db_config)
+    executar_comando(query, db_config, arquivo_log_caminho)
 
 for cliente in clientes:
-    executar_comando(preco_total_por_cliente(cliente), db_config)
+    print("Gastos totais do cliente " + cliente)
+    executar_comando(preco_total_por_cliente(cliente), db_config, arquivo_log_caminho)
+
+for view in views_criacao:
+    executar_comando(view, db_config, arquivo_log_caminho)
 
 for view in views:
-    executar_comando(executar_view(view), db_config)
+    print(view)
+    executar_comando(executar_view(view), db_config, arquivo_log_caminho)
+
+for trigger in triggers:
+    executar_comando(trigger, db_config, arquivo_log_caminho)
