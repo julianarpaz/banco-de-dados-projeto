@@ -29,25 +29,52 @@ erDiagram
     FUNCIONARIOS ||--|{ COMPRA : vendem
 
     CLIENTE {
-        string nome
-        string custNumber
-        string sector
+        string ID_Cliente 
+        string Nome_Empresa 
+        string Representante_Empresa 
+        string Cargo_Representante 
+        string Endereco 
+        string Cidade 
+        string Pais 
+        string Telefone 
     }
     COMPRA {
         int ID_Compra
         string deliveryAddress
+        string ID_Cliente 
+        int ID_Funcionario 
+        datetime Data_Venda 
+        decimal Frete 
     }
     PRODUTO {
-        string ID_Produto
-        int quantidade
+        int ID_Produto
         decimal Preco_Unitario
+        string Nome_Produto 
+        int ID_Categoria 
+        int Unidades_em_Estoque 
     }
     CATEGORIA {
         int ID_Categoria
+        string Nome_Categoria 
         string Descricao
     }
     DETALHAMENTO_COMPRA {
-
+        int ID_Compra
+        int ID_Produto 
+        decimal Preco_Unitario 
+        int Quantidade 
+        decimal Desconto 
+    }
+    FUNCIONARIOS {
+        int ID_Funcionario
+        string Sobrenome
+        string Nome
+        string Cargo 
+        string Titulo 
+        string Endereco 
+        string Cidade 
+        string Pais 
+        string Telefone 
     }
     
 
